@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ProofPay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #F1F3EF;
+    --panel: #FAFBF8;
+    --ink: #13211F;
+    --ink-2: #52615E;
+    --line: #D9DED8;
+    --pine: #0E4B45;
+    --pine-d: #0A3733;
+    --mint: #CFEBDD;
+    --amber: #E6B54A;
+    --amber-l: #F6E3AE;
+    --coral: #C5443B;
+    --display: "Bricolage Grotesque", "Hanken Grotesk", system-ui, sans-serif;
+    --text: "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.55 var(--text); -webkit-font-smoothing: antialiased; }
+  button, input, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; }
+  .num, .amt { font-variant-numeric: tabular-nums; }
+
+  .app { display: grid; grid-template-columns: 320px 1fr; min-height: 100%; }
+
+  /* Rail */
+  .rail { background: var(--panel); border-right: 1px solid var(--line); padding: 28px 0 24px; display: flex; flex-direction: column; gap: 20px; }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 0 24px; font: 800 22px/1 var(--display); letter-spacing: -0.02em; }
+  .new { margin: 0 24px; padding: 11px 16px; border-radius: 10px; border: 1px solid var(--pine); background: transparent; color: var(--pine); font-weight: 600; text-align: left; }
+  .new:hover { background: var(--pine); color: var(--paper); }
+  .rail h2 { margin: 4px 24px 0; font: 600 13px/1.2 var(--text); color: var(--ink-2); }
+  .mlist { display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+  .mrow { text-align: left; background: transparent; border: 0; border-bottom: 1px solid var(--line); padding: 14px 24px; display: block; width: 100%; }
+  .mrow:hover { background: #EEF1EC; }
+  .mrow[aria-current="true"] { background: var(--mint); box-shadow: inset 4px 0 0 var(--pine); }
+  .mrow .t { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mrow .s { display: flex; justify-content: space-between; font-size: 13px; color: var(--ink-2); margin: 2px 0 8px; }
+  .mini { display: flex; gap: 2px; height: 6px; }
+  .mini i { flex: var(--w) 1 0; border-radius: 2px; }
+  .modes { margin: auto 24px 0; font-size: 13px; color: #7A5A10; background: var(--amber-l); border-radius: 8px; padding: 10px 12px; display: none; }
+  .empty-rail { padding: 18px 24px; color: var(--ink-2); font-size: 14px; }
+
+  /* Stage */
+  .stage { padding: 40px clamp(20px, 5vw, 64px) 80px; max-width: 980px; width: 100%; }
+  h1 { font: 700 clamp(26px, 3.4vw, 36px)/1.1 var(--display); letter-spacing: -0.02em; margin: 0 0 8px; max-width: 24ch; }
+  .state { margin: 0; color: var(--ink-2); max-width: 56ch; }
+  .money { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 56px; margin: 36px 0 18px; }
+  .fig { display: flex; flex-direction: column; }
+  .fig .lbl { font-size: 14px; color: var(--ink-2); font-weight: 500; }
+  .fig .num { font: 800 clamp(44px, 7vw, 76px)/1 var(--display); letter-spacing: -0.035em; }
+  .fig.rel .num { color: var(--pine); }
+  .fig.held .num { color: #8A6410; }
+  .fig.gone .num { color: var(--ink-2); }
+  .of { flex-basis: 100%; margin: 0; font-size: 14px; color: var(--ink-2); }
+
+  /* Vault bar: every checklist item is a priced segment */
+  .vault { display: flex; gap: 4px; height: 52px; }
+  .seg { position: relative; flex: var(--w) 1 0; min-width: 6px; border-radius: 6px; overflow: hidden;
+    background: repeating-linear-gradient(135deg, var(--amber-l) 0 7px, #EBCB78 7px 14px); }
+  .seg::after { content: ""; position: absolute; inset: 0; background: var(--pine); transform: scaleX(0); transform-origin: left; }
+  .seg.ok::after { transform: scaleX(1); }
+  .seg.miss { box-shadow: inset 0 -4px 0 var(--coral); }
+  .seg.idle { background: repeating-linear-gradient(135deg, #E4E8E2 0 7px, #DADFD8 7px 14px); }
+  .seg.returned { background: #D5DAD3; }
+  .seg.hl { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .vault.fresh .seg.ok::after { animation: fill .7s cubic-bezier(.2,.7,.2,1) both; animation-delay: calc(var(--i) * 170ms); }
+  @keyframes fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+  /* Ledger */
+  section { margin-top: 40px; }
+  h2.sec { font: 700 20px/1.2 var(--display); letter-spacing: -0.01em; margin: 0 0 4px; }
+  .hint { margin: 0 0 8px; color: var(--ink-2); font-size: 14px; }
+  .ledger { border-top: 1px solid var(--ink); }
+  .item { display: grid; grid-template-columns: 28px 1fr auto; gap: 4px 14px; padding: 14px 0; border-bottom: 1px solid var(--line); align-items: start; }
+  .item:hover { background: #EEF1EC; }
+  .item .what { font-weight: 500; }
+  .item .why { grid-column: 2; font-size: 14px; color: var(--ink-2); max-width: 62ch; }
+  .item .amt { font: 700 17px/1.4 var(--display); text-align: right; }
+  .item.ok .amt { color: var(--pine); }
+  .item.miss .why { color: var(--coral); }
+  .ico { width: 22px; height: 22px; margin-top: 2px; }
+  .sum { margin: 14px 0 0; font-size: 15px; color: var(--ink-2); }
+
+  /* Actions */
+  label.f { display: block; font-weight: 600; font-size: 14px; margin: 0 0 6px; }
+  input[type=text], input[type=number], textarea { width: 100%; padding: 11px 13px; border: 1px solid #B9C1B9; border-radius: 10px; background: #fff; }
+  input:focus, textarea:focus { border-color: var(--pine); outline: 2px solid var(--mint); }
+  textarea { min-height: 112px; resize: vertical; }
+  .btns { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 14px; }
+  .btn { padding: 12px 22px; border-radius: 10px; border: 1px solid var(--pine); background: var(--pine); color: #fff; font-weight: 600; }
+  .btn:hover { background: var(--pine-d); }
+  .btn.ghost { background: transparent; color: var(--ink); border-color: #B9C1B9; }
+  .btn.ghost:hover { background: #E7EBE4; }
+  .btn[disabled] { opacity: .55; cursor: progress; }
+  .err { margin-top: 14px; padding: 10px 14px; border-radius: 8px; background: #F8DEDB; color: #7E221B; font-size: 14px; display: none; }
+  .err.on { display: block; }
+  .done { padding: 16px 18px; border-radius: 12px; background: var(--mint); color: var(--pine-d); font-weight: 500; }
+
+  /* Activity */
+  .trail { list-style: none; margin: 8px 0 0; padding: 0; border-left: 2px solid var(--line); }
+  .trail li { padding: 0 0 14px 18px; position: relative; font-size: 14px; }
+  .trail li::before { content: ""; position: absolute; left: -6px; top: 7px; width: 10px; height: 10px; border-radius: 50%; background: var(--paper); border: 2px solid var(--ink-2); }
+  .trail li.k::before { background: var(--pine); border-color: var(--pine); }
+  .trail time { display: block; color: var(--ink-2); font-size: 13px; }
+
+  /* New mandate form */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .field { margin-top: 20px; }
+  .crow { display: grid; grid-template-columns: 1fr 84px 92px 32px; gap: 10px; align-items: center; margin-top: 10px; }
+  .crow .amt { font: 700 16px var(--display); text-align: right; color: var(--pine); }
+  .x { border: 0; background: transparent; width: 32px; height: 32px; border-radius: 8px; color: var(--ink-2); font-size: 20px; line-height: 1; }
+  .x:hover { background: #E7EBE4; color: var(--coral); }
+  .link { border: 0; background: transparent; color: var(--pine); font-weight: 600; padding: 8px 0; margin-top: 6px; }
+  .link:hover { text-decoration: underline; }
+  .crow-head { display: grid; grid-template-columns: 1fr 84px 92px 32px; gap: 10px; margin-top: 18px; font-size: 13px; color: var(--ink-2); }
+  .crow-head span:nth-child(3) { text-align: right; }
+  .preview { margin-top: 22px; }
+
+  @media (max-width: 860px) {
+    .app { grid-template-columns: 1fr; }
+    .rail { border-right: 0; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+    .modes { margin: 0 24px; }
+    .grid2 { grid-template-columns: 1fr; }
+    .crow, .crow-head { grid-template-columns: 1fr 64px 76px 28px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .vault.fresh .seg.ok::after { animation: none; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="rail">
+    <a class="brand" href="/" style="text-decoration:none;color:inherit" aria-label="ProofPay home">
+      <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><rect x="1" y="1" width="26" height="26" rx="7" fill="#0E4B45"/><path d="M14 1h6a7 7 0 0 1 7 7v12a7 7 0 0 1-7 7h-6z" fill="#E6B54A"/><path d="M8.5 14.5l3.8 3.8 7.2-7.6" fill="none" stroke="#F1F3EF" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      ProofPay
+    </a>
+    <button class="new" id="newBtn">New mandate</button>
+    <h2>Your mandates</h2>
+    <nav class="mlist" id="list" aria-label="Mandates"></nav>
+    <div class="modes" id="modes" role="status"></div>
+  </aside>
+  <main class="stage" id="stage"></main>
+</div>
+
+<script>
+const $ = (s, r = document) => r.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const money = (n, cur = 'USD') => new Intl.NumberFormat('en-US', { style: 'currency', currency: cur }).format(Number(n) || 0);
+const when = (iso) => new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+const day = (iso) => new Date(iso).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+
+const state = {
+  list: [], sel: null, busy: false, error: '', fresh: null,
+  draft: { task: 'Build a landing page for my bakery', cap: 100, days: 7,
+    items: [
+      { text: 'Hero section with the bakery name', weight: 2 },
+      { text: 'Mobile responsive layout', weight: 2 },
+      { text: 'Contact form', weight: 1 },
+      { text: 'Opening hours section', weight: 1 },
+      { text: 'Live at a public URL', weight: 1 },
+    ] },
+};
+
+async function api(path, method = 'GET', body) {
+  const r = await fetch(path, { method, headers: { 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || (d.errors && d.errors.join(', ')) || `Request failed (${r.status})`);
+  return d;
+}
+
+/* ---------- helpers ---------- */
+const sumW = (items) => items.reduce((s, c) => s + (Number(c.weight) > 0 ? Number(c.weight) : 1), 0);
+const lastAudit = (m) => [...m.history].reverse().find((h) => h.event === 'AUDITED');
+const itemValue = (m, c) => (m.total * c.weight) / sumW(m.checklist);
+
+function segStates(m) {
+  const a = lastAudit(m);
+  return m.checklist.map((c) => {
+    if (m.status === 'CREATED') return 'idle';
+    if (!a) return 'held';
+    const hit = a.items.find((i) => i.id === c.id);
+    if (hit && hit.passed) return 'ok';
+    return m.status === 'CLOSED' ? 'returned' : 'miss';
+  });
+}
+function vault(weights, states, fresh) {
+  return `<div class="vault ${fresh ? 'fresh' : ''}" role="img" aria-label="Budget split by checklist item">` +
+    weights.map((w, i) => `<span class="seg ${states[i] || 'idle'}" data-i="${i}" style="--w:${w};--i:${i}"></span>`).join('') + `</div>`;
+}
+const icons = {
+  ok: '<svg class="ico" viewBox="0 0 22 22"><circle cx="11" cy="11" r="11" fill="#0E4B45"/><path d="M6 11.5l3.2 3.2L16 7.8" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  miss: '<svg class="ico" viewBox="0 0 22 22"><circle cx="11" cy="11" r="11" fill="#C5443B"/><path d="M7.5 7.5l7 7M14.5 7.5l-7 7" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg>',
+  held: '<svg class="ico" viewBox="0 0 22 22"><circle cx="11" cy="11" r="9.5" fill="none" stroke="#C99A2E" stroke-width="2"/><path d="M11 6.5V11l3 2" fill="none" stroke="#C99A2E" stroke-width="2" stroke-linecap="round"/></svg>',
+  idle: '<svg class="ico" viewBox="0 0 22 22"><circle cx="11" cy="11" r="9.5" fill="none" stroke="#9AA59F" stroke-width="2" stroke-dasharray="3 3"/></svg>',
+  returned: '<svg class="ico" viewBox="0 0 22 22"><circle cx="11" cy="11" r="9.5" fill="none" stroke="#9AA59F" stroke-width="2"/><path d="M7 11h8" stroke="#9AA59F" stroke-width="2" stroke-linecap="round"/></svg>',
+};
+const stateText = {
+  CREATED: 'Waiting for the buyer to fund this mandate. No money moves until then.',
+  FUNDED: 'Funds are held by PayPal. Waiting for the seller to deliver.',
+  PARTIAL: 'Part of the work is verified and paid. The rest stays held until it is fixed.',
+  RELEASED: 'Everything is verified. Payment is released.',
+  CLOSED: 'Closed. The remaining funds went back to the buyer.',
+};
+const eventText = (h, m) => ({
+  MANDATE_CREATED: 'Mandate created',
+  ORDER_CREATED: 'PayPal order created',
+  FUNDS_HELD: `PayPal is holding ${money(h.amount, m.currency)}`,
+  AUDITED: `Audit scored ${Math.round(h.score * 100)}%. ${money(h.released, m.currency)} released, ${money(h.held, m.currency)} still held`,
+  CLOSED: `Closed. ${money(h.returnedToBuyer, m.currency)} returned to the buyer`,
+}[h.event] || h.event);
+
+/* ---------- rail ---------- */
+function renderRail() {
+  const list = $('#list');
+  if (!state.list.length) { list.innerHTML = '<div class="empty-rail">No mandates yet. Create one to hold your first payment.</div>'; return; }
+  list.innerHTML = state.list.map((m) => {
+    const st = segStates(m);
+    const colors = { ok: 'var(--pine)', held: 'var(--amber)', miss: 'var(--coral)', idle: '#C9D0C8', returned: '#C9D0C8' };
+    const mini = m.checklist.map((c, i) => `<i style="--w:${c.weight};background:${colors[st[i]]}"></i>`).join('');
+    return `<button class="mrow" data-id="${esc(m.id)}" ${state.sel === m.id ? 'aria-current="true"' : ''}>
+      <span class="t">${esc(m.task)}</span>
+      <span class="s"><span>${esc(m.status.charAt(0) + m.status.slice(1).toLowerCase())}</span><span class="amt">${money(m.total, m.currency)}</span></span>
+      <span class="mini">${mini}</span></button>`;
+  }).join('');
+  list.querySelectorAll('.mrow').forEach((b) => (b.onclick = () => select(b.dataset.id)));
+}
+
+/* ---------- detail ---------- */
+function viewDetail(m) {
+  const a = lastAudit(m);
+  const st = segStates(m);
+  const held = Math.max(0, m.total - m.released);
+  const fresh = state.fresh === m.id;
+  state.fresh = null;
+
+  let figs;
+  if (m.status === 'CREATED') {
+    figs = `<div class="fig"><span class="lbl">Budget</span><span class="num">${money(m.total, m.currency)}</span></div>`;
+  } else {
+    figs = `<div class="fig rel"><span class="lbl">Released to the seller</span><span class="num">${money(m.released, m.currency)}</span></div>
+      <div class="fig ${m.status === 'CLOSED' ? 'gone' : 'held'}"><span class="lbl">${m.status === 'CLOSED' ? 'Returned to the buyer' : 'Held by PayPal'}</span><span class="num">${money(held, m.currency)}</span></div>`;
+  }
+
+  const rows = m.checklist.map((c, i) => {
+    const hit = a && a.items.find((x) => x.id === c.id);
+    const s = st[i];
+    const why = hit ? hit.reason : '';
+    return `<div class="item ${s}" data-i="${i}">${icons[s]}<div class="what">${esc(c.text)}</div><div class="amt">${money(itemValue(m, c), m.currency)}</div>
+      ${why ? `<div class="why">${esc(why)}</div>` : ''}</div>`;
+  }).join('');
+
+  let action = '';
+  if (m.status === 'CREATED') {
+    action = `<section><h2 class="sec">Fund this mandate</h2><p class="hint">You approve the hold in PayPal. The money stays yours until the work is verified.</p>
+      <div class="btns"><button class="btn" id="fund" ${state.busy ? 'disabled' : ''}>Fund ${money(m.total, m.currency)} with PayPal</button></div></section>`;
+  } else if (m.status === 'FUNDED' || m.status === 'PARTIAL') {
+    action = `<section><h2 class="sec">${m.status === 'PARTIAL' ? 'Submit the fixes' : 'Submit the delivery'}</h2>
+      <p class="hint">Paste what you built: a live link, test output, tracking details, or notes. The auditor checks it against the checklist above.</p>
+      <label class="f" for="ev">Delivery evidence</label>
+      <textarea id="ev" placeholder="Example: Live at https://example.com. Hero section and contact form are done.">${esc(state.evidence || '')}</textarea>
+      <div class="btns"><button class="btn" id="deliver" ${state.busy ? 'disabled' : ''}>${state.busy ? 'Auditing…' : 'Submit for audit'}</button>
+      <button class="btn ghost" id="close" ${state.busy ? 'disabled' : ''}>Close and return held funds</button></div></section>`;
+  } else if (m.status === 'RELEASED') {
+    action = `<section><div class="done">All ${m.checklist.length} items verified. ${money(m.released, m.currency)} released.</div></section>`;
+  } else {
+    action = `<section><div class="done" style="background:#E4E8E2;color:var(--ink)">Closed. ${money(held, m.currency)} returned to the buyer.</div></section>`;
+  }
+
+  const trail = [...m.history].reverse().map((h) =>
+    `<li class="${h.event === 'AUDITED' || h.event === 'FUNDS_HELD' ? 'k' : ''}">${esc(eventText(h, m))}<time datetime="${esc(h.at)}">${when(h.at)}</time></li>`).join('');
+
+  return `<header><h1>${esc(m.task)}</h1><p class="state">${stateText[m.status] || ''}</p></header>
+    <div class="money">${figs}<p class="of">Budget ${money(m.total, m.currency)}. Expires ${day(m.expiresAt)}.</p></div>
+    ${vault(m.checklist.map((c) => c.weight), st, fresh)}
+    <section><h2 class="sec">Agreed checklist</h2><p class="hint">Each item is worth a share of the budget. A verified item pays out its share.</p>
+      <div class="ledger">${rows}</div>
+      ${a ? `<p class="sum">${esc(a.summary || '')}${a.auditorMock ? ' (keyword auditor, not the AI model)' : ''}</p>` : ''}</section>
+    ${action}
+    <div class="err" id="err" role="alert"></div>
+    <section><h2 class="sec">Activity</h2><ul class="trail">${trail}</ul></section>`;
+}
+
+function bindDetail(m) {
+  const stage = $('#stage');
+  stage.querySelectorAll('.item').forEach((row) => {
+    const seg = () => stage.querySelector(`.seg[data-i="${row.dataset.i}"]`);
+    row.onmouseenter = () => seg() && seg().classList.add('hl');
+    row.onmouseleave = () => seg() && seg().classList.remove('hl');
+  });
+  const run = async (fn) => {
+    state.busy = true; state.error = ''; render();
+    try { await fn(); } catch (e) { state.error = e.message; }
+    state.busy = false; await refresh(); render();
+  };
+  const fund = $('#fund');
+  if (fund) fund.onclick = () => run(async () => { const d = await api(`/api/mandates/${m.id}/fund`, 'POST'); if (d.approveUrl) location.href = d.approveUrl; });
+  const dl = $('#deliver');
+  if (dl) dl.onclick = () => {
+    const evidence = $('#ev').value.trim();
+    if (!evidence) { showErr('Add some evidence first, for example a link or a short description of what you built.'); return; }
+    state.evidence = evidence;
+    run(async () => { await api(`/api/mandates/${m.id}/deliver`, 'POST', { evidence }); state.fresh = m.id; state.evidence = ''; });
+  };
+  const cl = $('#close');
+  if (cl) cl.onclick = () => { if (confirm('Close this mandate and void the remaining hold?')) run(() => api(`/api/mandates/${m.id}/close`, 'POST')); };
+  if (state.error) showErr(state.error);
+}
+function showErr(msg) { const e = $('#err'); if (e) { e.textContent = msg; e.classList.add('on'); } }
+
+/* ---------- new mandate ---------- */
+function viewNew() {
+  const d = state.draft;
+  return `<header><h1>New mandate</h1><p class="state">Set the budget and the checklist. Both sides agree to it before any money is held, and the AI judges delivery against it only.</p></header>
+    <div class="field"><label class="f" for="task">What needs to get done?</label><input type="text" id="task" value="${esc(d.task)}"></div>
+    <div class="grid2 field">
+      <div><label class="f" for="cap">Budget (USD)</label><input type="number" id="cap" min="1" step="1" value="${esc(d.cap)}"></div>
+      <div><label class="f" for="days">Deadline (days from now)</label><input type="number" id="days" min="1" step="1" value="${esc(d.days)}"></div>
+    </div>
+    <div class="field"><label class="f">Checklist</label>
+      <p class="hint" style="margin:0">A higher weight gives that item a bigger share of the budget.</p>
+      <div class="crow-head"><span>Item</span><span>Weight</span><span>Pays</span><span></span></div>
+      <div id="rows"></div>
+      <button class="link" id="add" type="button">Add an item</button>
+    </div>
+    <div class="preview"><div id="pv"></div></div>
+    <div class="err" id="err" role="alert"></div>
+    <div class="btns"><button class="btn" id="create" ${state.busy ? 'disabled' : ''}>Create mandate</button></div>`;
+}
+function drawRows() {
+  const d = state.draft;
+  $('#rows').innerHTML = d.items.map((it, i) => `<div class="crow">
+    <input type="text" data-k="text" data-i="${i}" value="${esc(it.text)}" aria-label="Checklist item ${i + 1}" placeholder="What must be true when it is done?">
+    <input type="number" data-k="weight" data-i="${i}" min="1" step="1" value="${esc(it.weight)}" aria-label="Weight for item ${i + 1}">
+    <span class="amt" data-amt="${i}"></span>
+    <button class="x" data-rm="${i}" aria-label="Remove item ${i + 1}" type="button">×</button></div>`).join('');
+  $('#rows').querySelectorAll('input').forEach((inp) => (inp.oninput = () => {
+    const it = d.items[inp.dataset.i];
+    it[inp.dataset.k] = inp.dataset.k === 'weight' ? Number(inp.value) : inp.value;
+    drawPreview();
+  }));
+  $('#rows').querySelectorAll('[data-rm]').forEach((b) => (b.onclick = () => { if (d.items.length > 1) { d.items.splice(b.dataset.rm, 1); drawRows(); } }));
+  drawPreview();
+}
+function drawPreview() {
+  const d = state.draft;
+  const w = d.items.map((i) => (i.weight > 0 ? i.weight : 1));
+  const tot = w.reduce((a, b) => a + b, 0);
+  const cap = Number(d.cap) || 0;
+  $('#pv').innerHTML = vault(w, w.map(() => 'held'), false);
+  w.forEach((x, i) => { const el = document.querySelector(`[data-amt="${i}"]`); if (el) el.textContent = money((cap * x) / tot); });
+}
+function bindNew() {
+  const d = state.draft;
+  $('#task').oninput = (e) => (d.task = e.target.value);
+  $('#cap').oninput = (e) => { d.cap = e.target.value; drawPreview(); };
+  $('#days').oninput = (e) => (d.days = e.target.value);
+  $('#add').onclick = () => { d.items.push({ text: '', weight: 1 }); drawRows(); const r = $('#rows').querySelectorAll('input[data-k="text"]'); r[r.length - 1].focus(); };
+  drawRows();
+  $('#create').onclick = async () => {
+    const checklist = d.items.filter((i) => i.text.trim()).map((i) => ({ text: i.text.trim(), weight: i.weight > 0 ? i.weight : 1 }));
+    if (!checklist.length) { showErr('Add at least one checklist item.'); return; }
+    state.busy = true; render();
+    try {
+      const m = await api('/api/mandates', 'POST', { task: d.task, cap: d.cap, checklist, expiresAt: new Date(Date.now() + d.days * 864e5).toISOString() });
+      await refresh(); state.busy = false; select(m.id);
+    } catch (e) { state.busy = false; render(); showErr(e.message); }
+  };
+}
+
+/* ---------- app ---------- */
+function render() {
+  renderRail();
+  const stage = $('#stage');
+  const m = state.list.find((x) => x.id === state.sel);
+  if (!m) { stage.innerHTML = viewNew(); bindNew(); return; }
+  stage.innerHTML = viewDetail(m);
+  bindDetail(m);
+}
+function select(id) {
+  state.sel = id; state.error = '';
+  history.replaceState(null, '', id ? `/app.html?mandate=${id}` : '/app.html');
+  render(); window.scrollTo(0, 0);
+}
+async function refresh() { state.list = await api('/api/mandates'); }
+$('#newBtn').onclick = () => select(null);
+
+(async () => {
+  try {
+    const h = await api('/api/health');
+    const msgs = [];
+    if (h.paypalMock) msgs.push('PayPal is in mock mode. No real sandbox calls are made.');
+    if (h.auditorMock) msgs.push('The auditor is a keyword matcher. Add a free GEMINI_API_KEY (or an ANTHROPIC_API_KEY) to .env to use a real AI model.');
+    if (msgs.length) { const el = $('#modes'); el.style.display = 'block'; el.textContent = msgs.join(' '); }
+  } catch {}
+  await refresh();
+  const q = new URLSearchParams(location.search).get('mandate');
+  state.sel = q && state.list.some((m) => m.id === q) ? q : (state.list[0] ? state.list[0].id : null);
+  render();
+})();
+</script>
+</body>
+</html>
